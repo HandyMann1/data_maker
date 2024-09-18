@@ -1,6 +1,6 @@
 import random
 from typing import List
-from math import sqrt, sin, cos, asin, pow, radians
+from math import sqrt, sin, cos, asin, pow, radians, ceil
 
 
 def generate_full_name(slavic_male_surnames: List[str], slavic_male_names: List[str],
@@ -88,4 +88,18 @@ def calculate_dist(xA: float, yA: float, xB: float, yB: float) -> int:  # https:
     d = 2 * r * asin(sqrt(h))
     return int(d)
 
+
 # print(calculate_dist(55.75, 37.62, 59.93, 30.31))
+
+def calculate_moving_time_in_hours(dist, train_number):
+    if 1 <= train_number <= 300:
+        train_speed = 60
+    elif 301 <= train_number <= 598:
+        train_speed = 50
+    elif 701 <= train_number <= 750:
+        train_speed = 91
+    elif 751 <= train_number <= 788:
+        train_speed = 161
+    else:
+        train_speed = 50
+    return ceil(dist / train_speed)
