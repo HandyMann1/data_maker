@@ -1,5 +1,6 @@
 import random
 from typing import List
+from math import sqrt, sin, cos, asin, pow, radians
 
 
 def generate_full_name(slavic_male_surnames: List[str], slavic_male_names: List[str],
@@ -68,3 +69,23 @@ def generate_card_number(used_cards, pay_system, bank) -> str:
             break
 
     return card_number
+
+
+def calculate_dist(xA: float, yA: float, xB: float, yB: float) -> int:  # https://dzen.ru/a/WyQuefRW4ACp2JIN
+    r = 6371  # Earth radius
+    latA = radians(xA)
+    latB = radians(xB)
+    lonA = radians(yA)
+    lonB = radians(yB)
+
+    sinlat = sin((latB - latA) / 2)
+    sinlon = sin((lonB - lonA) / 2)
+
+    coslonA = cos(latA)
+    coslonB = cos(latB)
+
+    h = pow(sinlat, 2) + coslonA * coslonB * pow(sinlon, 2)
+    d = 2 * r * asin(sqrt(h))
+    return int(d)
+
+# print(calculate_dist(55.75, 37.62, 59.93, 30.31))
