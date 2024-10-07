@@ -1,105 +1,94 @@
 import random
-from typing import List
-from math import sqrt, sin, cos, asin, pow, radians, ceil
+from openpyxl import Workbook
+import config as c
+
+import main_classes as m
 
 
-def generate_full_name(slavic_male_surnames: List[str], slavic_male_names: List[str],
-                       slavic_male_patronymics: List[str],
-                       slavic_female_surnames: List[str], slavic_female_names: List[str],
-                       slavic_female_patronymics: List[str], male_coef: float = 0.5) -> dict:
-    full_name = {'surname': '', 'name': '', 'patronymic': ''}
-    if male_coef > random.random():
-        full_name['surname'] = random.choice(slavic_male_surnames)
-        full_name['name'] = random.choice(slavic_male_names)
-        full_name['patronymic'] = random.choice(slavic_male_patronymics)
-    else:
-        full_name['surname'] = random.choice(slavic_female_surnames)
-        full_name['name'] = random.choice(slavic_female_names)
-        full_name['patronymic'] = random.choice(slavic_female_patronymics)
-    return full_name
+def generate_data(sber_prob, vtb_prob, visa_prob, mastercard_prob, num_of_people):
+    available_train_numbers = m.generate_train_numbers()
+    routes_set = set()
+    trains_list = []
+    full_name_set = set()
+    used_cards = {}
+    used_passports = set()
+    persons_list: list[m.Person] = []
 
+    stations_list = m.prep_stations_info(c.stations)
+    slavic_male_surnames = m.prep_names(c.slavic_male_surnames)
+    slavic_male_names = m.prep_names(c.slavic_male_names)
+    slavic_male_patronymics = m.prep_names(c.slavic_male_patronymics)
+    slavic_fem_surnames = m.prep_names(c.slavic_fem_surnames)
+    slavic_fem_names = m.prep_names(c.slavic_fem_names)
+    slavic_fem_patronymics = m.prep_names(c.slavic_fem_patronymics)
+    region_numbers_list = m.prep_names(c.reg_passport_nums)
 
-def generate_passport_numbers(region_numbers: List[str], used_passports_list: List[str]) -> str:
-    while True:
-        passport_number = random.choice(region_numbers) + str(random.randint(0, 99)) + ' ' + random.randint(100000,
-                                                                                                            999999)
-        if passport_number not in used_passports_list:
-            return passport_number
+    for i in range(c.num_routes):  # генерируем маршруты
+        train = m.Train()
+        train.choose_train_name_and_type(available_train_numbers)
+        train.create_route(stations_list, routes_set)
+        trains_list.append(train)
 
+    for train in trains_list:  # генерируем вагоны
+        for j in range(train.number_of_wagons):
+            train.add_wagon()
 
-def generate_card_number(used_cards, pay_system, bank) -> str:
-    if pay_system == 'Мир':
-        if bank == 'Сбербанк':
-            numbers = '2202'
-        elif bank == 'Тинькофф':
-            numbers = '2200'
-        elif bank == 'ВТБ':
-            numbers = '2204'
-        else:
-            numbers = '2206'
-    elif pay_system == 'MasterCard':
-        if bank == 'Сбербанк':
-            numbers = '5469'
-        elif bank == 'Тинькофф':
-            numbers = '5489'
-        elif bank == 'ВТБ':
-            numbers = '5443'
-        else:
-            numbers = '5406'
-    else:
-        if bank == 'Сбербанк':
-            numbers = '4276'
-        elif bank == 'Тинькофф':
-            numbers = '4277'
-        elif bank == 'ВТБ':
-            numbers = '4272'
-        else:
-            numbers = '4279'
-    while True:
-        rand_numbers = []
-        for i in range(3):
-            rand_numbers[i] = str(random.randint(1000, 9999))
-        card_number = numbers + ' ' + rand_numbers[0] + ' ' + rand_numbers[1] + ' ' + rand_numbers[2]
-        if card_number in used_cards:
-            if used_cards[card_number] < 5:
-                used_cards[card_number] += 1
+    for i in range(num_of_people):  # генерируем людей и рассаживаем их в вагоны
+        person = m.Person()
+        person.generate_full_name(full_name_set, slavic_male_surnames, slavic_male_names, slavic_male_patronymics,
+                                  slavic_fem_surnames, slavic_fem_names, slavic_fem_patronymics)
+        person.choose_pay_system_and_bank(sber_prob, vtb_prob, visa_prob, mastercard_prob)
+        person.generate_card_number(used_cards)
+        person.generate_passport_numbers(region_numbers_list, used_passports)
+        while True:
+            selected_train: m.Train = random.choice(trains_list)
+            if selected_train.free_seats > 0:
+                person.station_arrival = selected_train.station_arrival[0]
+                person.station_departure = selected_train.station_departure[0]
+                person.date_departure = selected_train.date_departure
+                person.date_arrival = selected_train.date_arrival
+                selected_train.free_seats -= 1
+                person.train_name = selected_train.train_name
+                while True:
+                    selected_wagon: m.Wagon = random.choice(selected_train.wagons_list)
+                    if selected_wagon.occupied_seats < selected_wagon.wagon_size:
+                        selected_wagon.occupied_seats += 1
+                        selected_wagon.add_passenger(person, selected_wagon)
+                        person.wagon_number = selected_wagon.wagon_number
+                        person.cost = selected_wagon.wagon_cost
+                        person.seat_number = selected_wagon.occupied_seats
+                        break
                 break
-        else:
-            used_cards[card_number] = 1
-            break
+        persons_list.append(person)
 
-    return card_number
+    workbook = Workbook()  # создаём excel файл
+    worksheet = workbook.active
+    worksheet["A1"] = "ФИО"
+    worksheet["B1"] = "Паспортные данные"
+    worksheet["C1"] = "Откуда"
+    worksheet["D1"] = "Куда"
+    worksheet["E1"] = "Дата отъезда"
+    worksheet["F1"] = "Дата приезда"
+    worksheet["G1"] = "Рейс"
+    worksheet["H1"] = "Выбор вагона и места"
+    worksheet["I1"] = "Стоимость"
+    worksheet["J1"] = "Карта оплаты"
 
+    for person in persons_list:
+        formatted_fio = "{} {} {}".format(person.name['first_name'], person.name['patronymic'],
+                                          person.name['surname'])
+        formatted_station_dep = ' '.join(person.station_departure)
+        formatted_station_arr = ' '.join(person.station_arrival)
+        formatted_date_dep = person.date_departure.strftime("%Y-%m-%dT%H:%M")
+        formatted_date_arr = person.date_arrival.strftime("%Y-%m-%dT%H:%M")
+        formatted_wagon_and_seat_num = (f'{person.wagon_number}-{person.seat_number}'
+                                        f' ({person.wagon_number} вагон, {person.seat_number} место)')
+        formatted_price = f'{int(person.cost)} руб'
 
-def calculate_dist(xA: float, yA: float, xB: float, yB: float) -> int:  # https://dzen.ru/a/WyQuefRW4ACp2JIN
-    r = 6371  # Earth radius
-    latA = radians(xA)
-    latB = radians(xB)
-    lonA = radians(yA)
-    lonB = radians(yB)
+        row = [formatted_fio, person.passport_number, formatted_station_dep, formatted_station_arr, formatted_date_dep,
+               formatted_date_arr, person.train_name, formatted_wagon_and_seat_num, formatted_price, person.card_number]
+        worksheet.append(row)
 
-    sinlat = sin((latB - latA) / 2)
-    sinlon = sin((lonB - lonA) / 2)
+    workbook.save('data.xlsx')
 
-    coslonA = cos(latA)
-    coslonB = cos(latB)
-
-    h = pow(sinlat, 2) + coslonA * coslonB * pow(sinlon, 2)
-    d = 2 * r * asin(sqrt(h))
-    return int(d)
-
-
-# print(calculate_dist(55.75, 37.62, 59.93, 30.31))
-
-def calculate_moving_time_in_hours(dist, train_number):
-    if 1 <= train_number <= 300:
-        train_speed = 60
-    elif 301 <= train_number <= 598:
-        train_speed = 50
-    elif 701 <= train_number <= 750:
-        train_speed = 91
-    elif 751 <= train_number <= 788:
-        train_speed = 161
-    else:
-        train_speed = 50
-    return ceil(dist / train_speed)
+    print("Excel file 'data' was created")
