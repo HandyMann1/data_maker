@@ -1,7 +1,8 @@
 import datetime
-from math import radians, sin, cos, asin, sqrt
-import config
 import random
+from math import radians, sin, cos, asin, sqrt
+
+import config
 
 
 class Train:
@@ -165,7 +166,7 @@ class Person:
             else:
                 numbers = '4279'
         while True:
-            rand_numbers = [1000, 1000, 1000]
+            rand_numbers = ['1000', '1000', '1000']
             for i in range(3):
                 rand_numbers[i] = str(random.randint(1000, 9999))
             card_number = numbers + ' ' + rand_numbers[0] + ' ' + rand_numbers[1] + ' ' + rand_numbers[2]

@@ -1,7 +1,8 @@
 import random
-from openpyxl import Workbook
-import config as c
 
+from openpyxl import Workbook
+
+import config as c
 import main_classes as m
 
 

@@ -1,4 +1,5 @@
 import tkinter as tk
+
 import config as c
 import main
 
