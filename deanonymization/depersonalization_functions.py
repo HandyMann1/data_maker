@@ -14,7 +14,7 @@ def calculate_k_anonymity(quasi_ident: dict, filename):
     grouped = df.groupby(items).size().reset_index(name='counts')
 
     k_anonymity = grouped['counts'].min()
-    print(grouped)
+
     total_records = len(df)
 
     worst_k_values: pd.DataFrame = (grouped
